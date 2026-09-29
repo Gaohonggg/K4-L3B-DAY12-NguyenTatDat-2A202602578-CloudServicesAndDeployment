@@ -1,101 +1,72 @@
-# Thông Tin Deploy — Checkpoint 5
+# Thông tin triển khai — Checkpoint 5
 
-> Điền file này sau khi deploy xong. `pytest tests/test_cp5.py` đọc file này
-> để tìm địa chỉ service của bạn và gọi thử.
->
-> **Chỉ ghi TÊN biến môi trường, tuyệt đối không dán giá trị API key vào đây.**
-> Repo này công khai — dán khóa vào là mất khóa.
-
-## Thông Tin Học Viên
+## Thông tin học viên
 
 | Mục | Nội dung |
-|-----|----------|
-| Họ và tên | (điền họ tên) |
-| Mã học viên | (điền mã học viên) |
-| Repo | (điền link repo K4-L3B-DAY12-HoVaTen-MSSV-CloudServicesAndDeployment) |
+| --- | --- |
+| Họ và tên | Nguyễn Tất Đạt |
+| Mã học viên | 2A202602578 |
+| Repository cá nhân | https://github.com/Gaohonggg/K4-L3B-DAY12-NguyenTatDat-2A202602578-CloudServicesAndDeployment |
 
 ## Service
 
 | Mục | Nội dung |
-|-----|----------|
-| Public URL | https://TODO-thay-bang-url-that.up.railway.app |
-| Platform | Railway / Render / Cloud Run — (điền platform bạn dùng) |
-| Ngày deploy | (điền ngày) |
+| --- | --- |
+| Public URL | https://day12-agent-production-9fb1.up.railway.app |
+| Platform | Railway |
+| Ngày triển khai | 2026-09-29 |
+| Railway service | `day12-agent` |
+| Redis | Railway Redis service, kết nối qua private network |
+| Nguồn triển khai | `railway up` từ thư mục làm bài; Dockerfile multi-stage |
 
-## Biến Môi Trường Đã Set Trên Cloud
+## Biến môi trường trên Railway
 
-Ghi tên biến và **nguồn giá trị**, không ghi giá trị:
+Chỉ ghi tên biến và nguồn cấu hình; không lưu giá trị secret vào repository.
 
-| Biến | Đã set | Ghi chú |
-|------|--------|---------|
-| `PORT` | ✅ | platform tự gán |
-| `AGENT_API_KEY` | ✅ | đặt trong dashboard, không nằm trong repo |
-| `REDIS_URL` | ✅ | (điền: Redis add-on của platform / Upstash / ...) |
-| `RATE_LIMIT_PER_MINUTE` | ✅ | 10 |
-| `MONTHLY_BUDGET_USD` | ✅ | 10.0 |
-| `LOG_LEVEL` | ✅ | INFO |
+| Biến | Nguồn |
+| --- | --- |
+| `PORT` | Railway tự cấp; ứng dụng đọc tại thời điểm chạy |
+| `AGENT_API_KEY` | Secret của service `day12-agent`, nạp từ `.env` cục bộ qua stdin của Railway CLI |
+| `REDIS_URL` | Tham chiếu `${{Redis.REDIS_URL}}` đến Redis service trong cùng project |
+| `RATE_LIMIT_PER_MINUTE` | Railway Variables: `10` |
+| `MONTHLY_BUDGET_USD` | Railway Variables: `10.0` |
+| `LOG_LEVEL` | Railway Variables: `INFO` |
 
-## Lệnh Kiểm Tra
+## Kiểm tra trên public URL
 
-Thay `<URL>` bằng Public URL ở trên:
+Các lệnh sau đã chạy ngày 2026-09-29. Khi tự kiểm tra request có xác thực, đặt `DEPLOY_API_KEY` ở môi trường cục bộ; không đưa key vào lệnh đã lưu, log hoặc tài liệu.
 
 ```bash
-# 1. Liveness — mong đợi 200 {"status":"ok"}
-curl -i <URL>/health
+URL=https://day12-agent-production-9fb1.up.railway.app
 
-# 2. Readiness — mong đợi 200 {"status":"ready"} (đã nối được Redis)
-curl -i <URL>/ready
-
-# 3. Không có API key — mong đợi 401
-curl -i -X POST <URL>/ask \
-  -H "Content-Type: application/json" \
+curl -i "$URL/health"
+curl -i "$URL/ready"
+curl -i -X POST "$URL/ask" \
+  -H 'Content-Type: application/json' \
   -d '{"question":"Hello"}'
 
-# 4. Có API key — mong đợi 200 kèm câu trả lời
-curl -i -X POST <URL>/ask \
-  -H "Content-Type: application/json" \
-  -H "X-API-Key: $AGENT_API_KEY" \
-  -H "X-User-Id: sv-test" \
+curl -i -X POST "$URL/ask" \
+  -H 'Content-Type: application/json' \
+  -H "X-API-Key: $DEPLOY_API_KEY" \
+  -H 'X-User-Id: cp5-verified' \
   -d '{"question":"Deploy là gì?"}'
-
-# 5. Rate limit — gọi 15 lần, những lần cuối phải trả 429
-for i in $(seq 1 15); do
-  curl -s -o /dev/null -w "%{http_code} " -X POST <URL>/ask \
-    -H "Content-Type: application/json" \
-    -H "X-API-Key: $AGENT_API_KEY" \
-    -H "X-User-Id: sv-test" \
-    -d '{"question":"test"}'
-done; echo
 ```
 
-## Kết Quả Chạy Thật
+Kết quả thực tế (đã lược bỏ response headers và không hiển thị key):
 
-Dán output của các lệnh trên vào đây:
+```text
+GET  /health           200 {"status":"ok","service":"day12-agent","version":"1.0.0"}
+GET  /ready            200 {"status":"ready","redis":true}
+POST /ask thiếu key    401 {"detail":"invalid or missing API key"}
+POST /ask có key       200; response có answer, cost_usd, history_length, tokens, user_id
 
+15 POST /ask liên tiếp với cùng X-User-Id:
+200 200 200 200 200 200 200 200 200 200 429 429 429 429 429
 ```
-(điền output)
-```
 
-## Ảnh Chụp Màn Hình
+Railway build log xác nhận image được build từ Dockerfile và healthcheck `/health` thành công. Runtime log xác nhận Uvicorn bind `0.0.0.0:8080`, là cổng do Railway cấp.
 
-Đặt ảnh trong thư mục `screenshots/`:
+## Ảnh chụp màn hình
 
-- `screenshots/dashboard.png` — trang quản lý service trên platform
-- `screenshots/health.png` — kết quả gọi `/health` từ trình duyệt hoặc curl
-
----
-
-## Nếu Dùng Phương Án Dự Phòng
-
-Không đăng ký được tài khoản cloud? Vẫn nộp được bài, nhưng CP5 tối đa 60% điểm:
-
-1. Đặt `LOCAL_FALLBACK=true` trong `.env`
-2. Chạy `docker compose up -d` rồi kiểm tra `docker compose ps`
-3. Chụp màn hình vào `screenshots/`
-4. Chạy `pytest tests/test_cp5.py -v` — bộ test sẽ tự chuyển sang kiểm tra
-   `http://localhost:8000`
-5. Ghi rõ lý do không deploy được vào phần dưới đây:
-
-```
-(điền lý do nếu dùng phương án dự phòng, ngược lại xóa mục này)
-```
+- `screenshots/dashboard.png`: dashboard Railway hiển thị service agent và Redis.
+- `screenshots/health.png`: kết quả gọi `/health` trên public URL.
