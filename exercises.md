@@ -6,7 +6,8 @@
 > Cách trả lời: viết nhận xét dựa trên các lần chạy thực tế của bài lab.
 > `grade.py` đếm số câu đã trả lời (15 điểm cho 10 câu).
 >
-> Họ và tên: Nguyễn Tất Đạt  Mã học viên: 2A202602578
+> Họ và tên: Nguyễn Tất Đạt  
+> Mã học viên: 2A202602578
 
 ---
 
