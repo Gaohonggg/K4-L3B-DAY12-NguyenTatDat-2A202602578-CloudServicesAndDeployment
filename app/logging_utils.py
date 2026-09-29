@@ -20,11 +20,12 @@ def utc_now_iso() -> str:
 def log_event(event: str, level: str = "info", **fields) -> str:
     """Ghi một dòng log JSON ra stdout.
 
-    TODO (CP1): tạo dict gồm tối thiểu 3 khóa
+    JSON gồm tối thiểu 3 khóa
         - "event"     : tên sự kiện, lấy từ tham số ``event``
         - "level"     : mức log, VIẾT THƯỜNG (dùng ``level.lower()``)
         - "timestamp" : ``utc_now_iso()``
-    rồi gộp thêm mọi cặp key/value trong ``**fields``.
+    và mọi cặp key/value trong ``**fields``. Các khóa bắt buộc được ưu tiên
+    nếu field bổ sung trùng tên.
 
     In chuỗi JSON đó ra stdout **trên một dòng duy nhất**
     (``json.dumps(..., ensure_ascii=False)``, đừng dùng ``indent``) và
@@ -34,4 +35,7 @@ def log_event(event: str, level: str = "info", **fields) -> str:
         >>> log_event("ask_completed", user_id="sv01", cost_usd=0.0001)
         '{"event": "ask_completed", "level": "info", "timestamp": "...", ...}'
     """
-    raise NotImplementedError("TODO (CP1): cài đặt log_event")
+    payload = {**fields, "event": event, "level": level.lower(), "timestamp": utc_now_iso()}
+    message = json.dumps(payload, ensure_ascii=False)
+    print(message, file=sys.stdout)
+    return message
