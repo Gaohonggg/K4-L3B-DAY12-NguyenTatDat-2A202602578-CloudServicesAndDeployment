@@ -38,7 +38,7 @@ services:
   agent:
     build: .
     ports:
-      - "8000:8000"
+      - "8000-8002:8000"
     environment:
       AGENT_API_KEY: ${AGENT_API_KEY:?Set AGENT_API_KEY in .env or shell}
       REDIS_URL: redis://redis:6379/0
